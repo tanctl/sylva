@@ -1,0 +1,43 @@
+[package]
+name = "sylva"
+version = "0.1.0"
+edition = "2021"
+authors = ["Tanya Arora tanyaarora@tutamail.com"]
+description = "A versioned ledger and proof system for verifiable data"
+license = "GLPv3"
+repository = "https://github.com/tanctl/sylva"
+homepage = "https://github.com/tanctl/sylva"
+documentation = "https://docs.rs/sylva"
+keywords = ["ledger", "versioning", "proof", "verification", "blockchain"]
+categories = ["data-structures", "cryptography", "command-line-utilities"]
+readme = "README.md"
+
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+anyhow = "1.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+hex = "0.4"
+base64 = "0.21"
+toml = "0.8"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+tempfile = "3.0"
+pretty_assertions = "1.0"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+# Allow some reasonable exceptions
+missing_docs_in_private_items = "allow"
+module_name_repetitions = "allow"
+similar_names = "allow"
+too_many_arguments = "allow"
+type_complexity = "allow"
+
+[[bin]]
+name = "sylva"
+path = "src/main.rs"
+
