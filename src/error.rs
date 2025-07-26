@@ -3,6 +3,7 @@
 use thiserror::Error;
 use uuid::Uuid;
 
+/// convenience type alias for results
 pub type Result<T> = std::result::Result<T, SylvaError>;
 
 #[derive(Error, Debug)]
@@ -61,72 +62,85 @@ pub enum SylvaError {
 }
 
 impl SylvaError {
+    /// create entry not found error
     pub fn entry_not_found(id: Uuid) -> Self {
         Self::EntryNotFound { id }
     }
 
+    /// create invalid proof error
     pub fn invalid_proof<S: Into<String>>(reason: S) -> Self {
         Self::InvalidProof {
             reason: reason.into(),
         }
     }
 
+    /// create config error
     pub fn config_error<S: Into<String>>(message: S) -> Self {
         Self::ConfigError {
             message: message.into(),
         }
     }
 
+    /// create version conflict error
     pub fn version_conflict(expected: u64, actual: u64) -> Self {
         Self::VersionConflict { expected, actual }
     }
 
+    /// create storage error
     pub fn storage_error<S: Into<String>>(message: S) -> Self {
         Self::StorageError {
             message: message.into(),
         }
     }
 
+    /// create hash error
     pub fn hash_error<S: Into<String>>(message: S) -> Self {
         Self::HashError {
             message: message.into(),
         }
     }
 
+    /// create merkle tree error
     pub fn merkle_tree_error<S: Into<String>>(message: S) -> Self {
         Self::MerkleTreeError {
             message: message.into(),
         }
     }
 
+    /// create workspace error
     pub fn workspace_error<S: Into<String>>(message: S) -> Self {
         Self::WorkspaceError {
             message: message.into(),
         }
     }
 
+    /// create invalid input error
     pub fn invalid_input<S: Into<String>>(message: S) -> Self {
         Self::InvalidInput {
             message: message.into(),
         }
     }
 
+    /// create permission denied error
     pub fn permission_denied<S: Into<String>>(operation: S) -> Self {
         Self::PermissionDenied {
             operation: operation.into(),
         }
     }
 
+    /// create already exists error
     pub fn already_exists<S: Into<String>>(resource: S) -> Self {
         Self::AlreadyExists {
             resource: resource.into(),
         }
     }
 
+    /// create timeout error
     pub fn timeout(duration_ms: u64) -> Self {
         Self::Timeout { duration_ms }
     }
 
+    /// create internal error
     pub fn internal<S: Into<String>>(message: S) -> Self {
         Self::Internal {
             message: message.into(),

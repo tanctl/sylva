@@ -5,73 +5,115 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// main configuration for sylva
 pub struct Config {
+    /// storage backend settings
     pub storage: StorageConfig,
+    /// hash algorithm settings
     pub hashing: HashingConfig,
+    /// proof generation settings
     pub proof: ProofConfig,
+    /// workspace behavior settings
     pub workspace: WorkspaceConfig,
+    /// performance tuning settings
     pub performance: PerformanceConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// storage backend configuration
 pub struct StorageConfig {
+    /// which storage backend to use
     pub backend: StorageBackend,
+    /// base directory for file storage
     pub base_path: Option<PathBuf>,
+    /// cache size in bytes
     pub cache_size: Option<u64>,
+    /// database connection string
     pub connection_string: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
+/// available storage backends
 pub enum StorageBackend {
+    /// in-memory storage
     Memory,
+    /// file-based storage
     Filesystem,
+    /// database storage
     Database,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// hash algorithm configuration
 pub struct HashingConfig {
+    /// which hash algorithm to use
     pub algorithm: HashAlgorithm,
+    /// enable parallel hashing for large files
     pub parallel_hashing: bool,
+    /// chunk size for parallel processing
     pub chunk_size: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
+/// hash algorithms we support
 pub enum HashAlgorithm {
+    /// sha-256 algorithm
     Sha256,
+    /// blake3 algorithm
     Blake3,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// proof generation settings
 pub struct ProofConfig {
+    /// how long proofs are valid (seconds)
     pub default_ttl: u64,
+    /// cache generated proofs
     pub enable_caching: bool,
+    /// max number of cached proofs
     pub max_cache_size: usize,
+    /// compress proof data
     pub compress_proofs: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// workspace behavior settings
 pub struct WorkspaceConfig {
+    /// default workspace name
     pub default_name: String,
+    /// auto-save interval in seconds
     pub auto_save_interval: u64,
+    /// max workspace size in bytes
     pub max_size: Option<u64>,
+    /// backup configuration
     pub backup: BackupConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// backup settings
 pub struct BackupConfig {
+    /// enable automatic backups
     pub enabled: bool,
+    /// backup interval in seconds
     pub interval: u64,
+    /// maximum number of backups to keep
     pub max_backups: usize,
+    /// directory to store backups
     pub backup_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// performance tuning options
 pub struct PerformanceConfig {
+    /// number of worker threads (auto if none)
     pub worker_threads: Option<usize>,
+    /// memory pool size in bytes
     pub memory_pool_size: u64,
+    /// use memory mapping for large files
     pub enable_mmap: bool,
+    /// io buffer size in bytes
     pub io_buffer_size: usize,
 }
 
@@ -117,6 +159,7 @@ impl Default for Config {
 }
 
 impl Config {
+    /// load config from toml file
     pub fn load_from_file(path: &PathBuf) -> Result<Self> {
         let content = std::fs::read_to_string(path)?;
         let config: Config = toml::from_str(&content)
@@ -124,6 +167,7 @@ impl Config {
         Ok(config)
     }
 
+    /// save config to toml file
     pub fn save_to_file(&self, path: &PathBuf) -> Result<()> {
         let content = toml::to_string_pretty(self)
             .map_err(|e| SylvaError::config_error(format!("Failed to serialize config: {}", e)))?;
@@ -131,6 +175,7 @@ impl Config {
         Ok(())
     }
 
+    /// load config from environment variables
     pub fn load_from_env() -> Result<Self> {
         let mut config = Config::default();
 
@@ -161,6 +206,7 @@ impl Config {
         Ok(config)
     }
 
+    /// validate configuration settings
     pub fn validate(&self) -> Result<()> {
         match self.storage.backend {
             StorageBackend::Filesystem => {
@@ -177,8 +223,7 @@ impl Config {
                     ));
                 }
             }
-            StorageBackend::Memory => {
-            }
+            StorageBackend::Memory => {}
         }
 
         if let Some(threads) = self.performance.worker_threads {
@@ -198,6 +243,7 @@ impl Config {
         Ok(())
     }
 
+    /// get actual number of worker threads to use
     pub fn effective_worker_threads(&self) -> usize {
         self.performance.worker_threads.unwrap_or_else(|| {
             std::thread::available_parallelism()

@@ -1,36 +1,52 @@
 //! proof system for the Sylva ledger
 
 use crate::error::Result;
-use crate::hash::{Hash, Hasher};
+use crate::hash::{Blake3Hasher, Hash, HashOutput};
 use crate::tree::MerkleProof;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// cryptographic proof for ledger entries
 pub struct Proof {
+    /// id of the entry this proof is for
     pub entry_id: Uuid,
+    /// version of the entry
     pub version: u64,
+    /// merkle tree proof
     pub merkle_proof: MerkleProof,
+    /// when proof was generated
     pub timestamp: u64,
+    /// additional proof metadata
     pub metadata: ProofMetadata,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// metadata for proofs
 pub struct ProofMetadata {
+    /// type of proof (existence, integrity, etc)
     pub proof_type: ProofType,
+    /// hash algorithm used
     pub algorithm: String,
+    /// extra proof properties
     pub properties: std::collections::HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// types of proofs we can generate
 pub enum ProofType {
+    /// proof that entry exists
     Existence,
+    /// proof that entry does not exist
     NonExistence,
+    /// proof of data integrity
     Integrity,
+    /// proof of authenticity
     Authenticity,
 }
 
 impl Proof {
+    /// create new proof
     pub fn new(
         entry_id: Uuid,
         version: u64,
@@ -53,6 +69,7 @@ impl Proof {
         }
     }
 
+    /// verify proof against given data
     pub fn verify(&self, data: &[u8]) -> Result<bool> {
         let merkle_valid = crate::tree::MerkleTree::verify_proof(&self.merkle_proof, data)?;
 
@@ -77,20 +94,24 @@ impl Proof {
         }
     }
 
-    pub fn proof_hash(&self) -> Hash {
+    /// get hash of the proof itself
+    pub fn proof_hash(&self) -> HashOutput {
         let proof_data = serde_json::to_vec(self).unwrap_or_default();
-        let hasher = crate::hash::Sha256Hasher;
-        hasher.hash(&proof_data)
+        let hasher = Blake3Hasher::new();
+        hasher.hash_bytes(&proof_data).unwrap()
     }
 
+    /// add custom property to proof
     pub fn add_property(&mut self, key: String, value: String) {
         self.metadata.properties.insert(key, value);
     }
 
+    /// get custom property from proof
     pub fn get_property(&self, key: &str) -> Option<&String> {
         self.metadata.properties.get(key)
     }
 
+    /// check if proof has expired
     pub fn is_expired(&self, ttl_seconds: u64) -> bool {
         let current_time = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -102,6 +123,7 @@ impl Proof {
 }
 
 #[derive(Debug)]
+/// generates cryptographic proofs
 pub struct ProofGenerator {
     algorithm: String,
 }
@@ -115,10 +137,12 @@ impl Default for ProofGenerator {
 }
 
 impl ProofGenerator {
+    /// create proof generator with specific algorithm
     pub fn new(algorithm: String) -> Self {
         Self { algorithm }
     }
 
+    /// generate proof that entry exists
     pub fn generate_existence_proof(
         &self,
         entry_id: Uuid,
@@ -132,6 +156,7 @@ impl ProofGenerator {
         Ok(proof)
     }
 
+    /// generate proof of data integrity
     pub fn generate_integrity_proof(
         &self,
         entry_id: Uuid,
@@ -142,8 +167,8 @@ impl ProofGenerator {
         let mut proof = Proof::new(entry_id, version, merkle_proof, ProofType::Integrity);
         proof.metadata.algorithm = self.algorithm.clone();
 
-        let hasher = crate::hash::Sha256Hasher;
-        let data_hash = hasher.hash(data);
+        let hasher = Blake3Hasher::new();
+        let data_hash = hasher.hash_bytes(data)?;
         proof.add_property("data_hash".to_string(), data_hash.to_hex());
 
         Ok(proof)
@@ -161,7 +186,7 @@ mod tests {
         let merkle_proof = MerkleProof {
             leaf_index: 0,
             siblings: vec![],
-            root: Hash::new([0u8; 32]),
+            root: HashOutput::new([0u8; 32]),
         };
 
         let proof = Proof::new(entry_id, 1, merkle_proof, ProofType::Existence);
@@ -175,7 +200,7 @@ mod tests {
         let merkle_proof = MerkleProof {
             leaf_index: 0,
             siblings: vec![],
-            root: Hash::new([0u8; 32]),
+            root: HashOutput::new([0u8; 32]),
         };
 
         let mut proof = Proof::new(entry_id, 1, merkle_proof, ProofType::Existence);
@@ -196,7 +221,7 @@ mod tests {
         let merkle_proof = MerkleProof {
             leaf_index: 0,
             siblings: vec![],
-            root: Hash::new([0u8; 32]),
+            root: HashOutput::new([0u8; 32]),
         };
 
         let proof = generator

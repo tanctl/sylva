@@ -5,28 +5,41 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// trait for storage backends
 pub trait Storage: Send + Sync {
+    /// store data with key
     fn store(&mut self, key: &str, data: &[u8]) -> Result<()>;
+    /// retrieve data by key
     fn retrieve(&self, key: &str) -> Result<Vec<u8>>;
+    /// check if key exists
     fn exists(&self, key: &str) -> Result<bool>;
+    /// delete data by key
     fn delete(&mut self, key: &str) -> Result<()>;
+    /// list all stored keys
     fn list_keys(&self) -> Result<Vec<String>>;
+    /// get storage statistics
     fn stats(&self) -> Result<StorageStats>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// storage statistics
 pub struct StorageStats {
+    /// number of stored entries
     pub entry_count: usize,
+    /// total size in bytes
     pub total_size: u64,
+    /// available space if known
     pub available_space: Option<u64>,
 }
 
 #[derive(Debug, Default)]
+/// in-memory storage backend
 pub struct MemoryStorage {
     data: HashMap<String, Vec<u8>>,
 }
 
 impl MemoryStorage {
+    /// create new memory storage
     pub fn new() -> Self {
         Self {
             data: HashMap::new(),
@@ -74,11 +87,13 @@ impl Storage for MemoryStorage {
 }
 
 #[derive(Debug)]
+/// file-based storage backend
 pub struct FileSystemStorage {
     base_path: std::path::PathBuf,
 }
 
 impl FileSystemStorage {
+    /// create new filesystem storage
     pub fn new(base_path: std::path::PathBuf) -> Result<Self> {
         std::fs::create_dir_all(&base_path)?;
         Ok(Self { base_path })
@@ -165,13 +180,16 @@ impl Storage for FileSystemStorage {
     }
 }
 
+/// factory for creating storage backends
 pub struct StorageFactory;
 
 impl StorageFactory {
+    /// create memory storage backend
     pub fn memory() -> Box<dyn Storage> {
         Box::new(MemoryStorage::new())
     }
 
+    /// create filesystem storage backend
     pub fn filesystem(path: std::path::PathBuf) -> Result<Box<dyn Storage>> {
         Ok(Box::new(FileSystemStorage::new(path)?))
     }

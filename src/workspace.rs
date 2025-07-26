@@ -8,26 +8,40 @@ use std::path::PathBuf;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
+/// sylva project workspace
 pub struct Workspace {
+    /// unique workspace identifier
     pub id: Uuid,
+    /// workspace name
     pub name: String,
+    /// workspace directory path
     pub path: PathBuf,
     #[serde(skip)]
+    /// optional ledger instance
     pub ledger: Option<Ledger>,
+    /// workspace metadata
     pub metadata: WorkspaceMetadata,
+    /// workspace configuration
     pub config: Config,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// metadata for workspaces
 pub struct WorkspaceMetadata {
+    /// when workspace was created
     pub created_at: u64,
+    /// when workspace was last modified
     pub modified_at: u64,
+    /// optional description
     pub description: Option<String>,
+    /// workspace tags
     pub tags: Vec<String>,
+    /// extra properties
     pub properties: std::collections::HashMap<String, String>,
 }
 
 impl Workspace {
+    /// create new workspace
     pub fn new(name: String, path: PathBuf) -> Result<Self> {
         let id = Uuid::new_v4();
         let now = std::time::SystemTime::now()
@@ -53,6 +67,7 @@ impl Workspace {
         Ok(workspace)
     }
 
+    /// initialize workspace directory and files
     pub fn initialize(&mut self) -> Result<()> {
         std::fs::create_dir_all(&self.path)?;
 
@@ -73,6 +88,7 @@ impl Workspace {
         Ok(())
     }
 
+    /// load existing workspace from directory
     pub fn load(path: PathBuf) -> Result<Self> {
         let metadata_path = path.join("workspace.json");
         if !metadata_path.exists() {
@@ -97,6 +113,7 @@ impl Workspace {
         Ok(workspace)
     }
 
+    /// save workspace metadata to disk
     pub fn save_metadata(&mut self) -> Result<()> {
         self.metadata.modified_at = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -110,6 +127,7 @@ impl Workspace {
         Ok(())
     }
 
+    /// get workspace status info
     pub fn status(&self) -> Result<WorkspaceStatus> {
         let mut status = WorkspaceStatus {
             name: self.name.clone(),
@@ -132,6 +150,7 @@ impl Workspace {
         Ok(status)
     }
 
+    /// cleanup temporary files
     pub fn cleanup(&self) -> Result<()> {
         let temp_dir = self.path.join("temp");
         if temp_dir.exists() {
@@ -141,6 +160,7 @@ impl Workspace {
         Ok(())
     }
 
+    /// add tag to workspace
     pub fn add_tag(&mut self, tag: String) -> Result<()> {
         if !self.metadata.tags.contains(&tag) {
             self.metadata.tags.push(tag);
@@ -149,28 +169,33 @@ impl Workspace {
         Ok(())
     }
 
+    /// remove tag from workspace
     pub fn remove_tag(&mut self, tag: &str) -> Result<()> {
         self.metadata.tags.retain(|t| t != tag);
         self.save_metadata()?;
         Ok(())
     }
 
+    /// set workspace description
     pub fn set_description(&mut self, description: String) -> Result<()> {
         self.metadata.description = Some(description);
         self.save_metadata()?;
         Ok(())
     }
 
+    /// add property to workspace
     pub fn add_property(&mut self, key: String, value: String) -> Result<()> {
         self.metadata.properties.insert(key, value);
         self.save_metadata()?;
         Ok(())
     }
 
+    /// get property from workspace
     pub fn get_property(&self, key: &str) -> Option<&String> {
         self.metadata.properties.get(key)
     }
 
+    /// validate workspace integrity
     pub fn validate(&self) -> Result<Vec<String>> {
         let mut issues = Vec::new();
 
@@ -202,12 +227,19 @@ impl Workspace {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// workspace status information
 pub struct WorkspaceStatus {
+    /// workspace name
     pub name: String,
+    /// workspace path
     pub path: PathBuf,
+    /// whether workspace is initialized
     pub initialized: bool,
+    /// number of ledger entries
     pub ledger_entries: usize,
+    /// total size in bytes
     pub total_size: u64,
+    /// last activity timestamp
     pub last_activity: u64,
 }
 

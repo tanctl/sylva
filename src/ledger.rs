@@ -1,7 +1,7 @@
 //! core ledger implementation for Sylva
 
 use crate::error::{Result, SylvaError};
-use crate::hash::{Hash, Hasher, Sha256Hasher};
+use crate::hash::{Blake3Hasher, EntryHashContext, Hash, HashOutput};
 use crate::proof::{Proof, ProofGenerator};
 use crate::storage::{Storage, StorageFactory};
 use crate::tree::MerkleTree;
@@ -10,55 +10,77 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use uuid::Uuid;
 
+/// versioned ledger with merkle tree proof generation
 pub struct Ledger {
     storage: Box<dyn Storage>,
     entry_index: HashMap<Uuid, EntryMetadata>,
     current_version: u64,
     proof_generator: ProofGenerator,
-    hasher: Sha256Hasher,
+    hasher: Blake3Hasher,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// single entry in the ledger
 pub struct LedgerEntry {
+    /// unique entry identifier
     pub id: Uuid,
+    /// entry version number
     pub version: u64,
+    /// raw entry data
     pub data: Vec<u8>,
+    /// entry metadata
     pub metadata: EntryMetadata,
-    pub data_hash: Hash,
+    /// hash of the entry data
+    pub data_hash: HashOutput,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// metadata for ledger entries
 pub struct EntryMetadata {
+    /// when entry was created (unix timestamp)
     pub timestamp: u64,
+    /// optional user message
     pub message: Option<String>,
+    /// tags for categorizing entries
     pub tags: Vec<String>,
+    /// mime type or content type
     pub content_type: Option<String>,
+    /// size of entry data in bytes
     pub size: u64,
+    /// id of previous version if any
     pub previous_id: Option<Uuid>,
+    /// extra key-value properties
     pub properties: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// statistics about the ledger
 pub struct LedgerStats {
+    /// total number of entries
     pub entry_count: usize,
+    /// total size of all entries in bytes
     pub total_size: u64,
+    /// current ledger version
     pub current_version: u64,
+    /// number of entry chains
     pub entry_chains: usize,
 }
 
 impl Ledger {
+    /// create new ledger with filesystem storage
     pub fn new(base_path: PathBuf) -> Result<Self> {
         let storage = StorageFactory::filesystem(base_path)?;
         Self::with_storage(storage)
     }
 
+    /// create new ledger with custom storage backend
     pub fn with_storage(storage: Box<dyn Storage>) -> Result<Self> {
         let mut ledger = Self {
             storage,
             entry_index: HashMap::new(),
             current_version: 0,
             proof_generator: ProofGenerator::default(),
-            hasher: Sha256Hasher,
+            hasher: Blake3Hasher::new(),
         };
 
         ledger.load_entries()?;
@@ -66,10 +88,12 @@ impl Ledger {
         Ok(ledger)
     }
 
+    /// load existing ledger from filesystem
     pub fn load(base_path: PathBuf) -> Result<Self> {
         Self::new(base_path)
     }
 
+    /// add new entry to the ledger
     pub fn add_entry(&mut self, data: Vec<u8>, message: Option<String>) -> Result<Uuid> {
         let id = Uuid::new_v4();
         let timestamp = std::time::SystemTime::now()
@@ -77,8 +101,18 @@ impl Ledger {
             .unwrap_or_default()
             .as_secs();
 
-        let data_hash = self.hasher.hash(&data);
         self.current_version += 1;
+
+        let entry_context = EntryHashContext {
+            entry_id: id,
+            version: self.current_version,
+            timestamp,
+            previous_id: None,
+            content_type: None,
+            metadata: HashMap::new(),
+        };
+
+        let data_hash = self.hasher.hash_entry(&data, &entry_context)?;
 
         let metadata = EntryMetadata {
             timestamp,
@@ -109,6 +143,7 @@ impl Ledger {
         Ok(id)
     }
 
+    /// get entry by id
     pub fn get_entry(&self, id: Uuid) -> Result<LedgerEntry> {
         let key = format!("entry:{}", id);
         let entry_data = self
@@ -120,20 +155,24 @@ impl Ledger {
         Ok(entry)
     }
 
+    /// check if entry exists
     pub fn entry_exists(&self, id: Uuid) -> Result<bool> {
         Ok(self.entry_index.contains_key(&id))
     }
 
+    /// list all entry ids
     pub fn list_entries(&self) -> Result<Vec<Uuid>> {
         Ok(self.entry_index.keys().cloned().collect())
     }
 
+    /// get entry metadata without loading full data
     pub fn get_entry_metadata(&self, id: Uuid) -> Result<&EntryMetadata> {
         self.entry_index
             .get(&id)
             .ok_or_else(|| SylvaError::entry_not_found(id))
     }
 
+    /// update existing entry (creates new version)
     pub fn update_entry(
         &mut self,
         id: Uuid,
@@ -148,8 +187,18 @@ impl Ledger {
             .unwrap_or_default()
             .as_secs();
 
-        let data_hash = self.hasher.hash(&new_data);
         self.current_version += 1;
+
+        let entry_context = EntryHashContext {
+            entry_id: new_id,
+            version: self.current_version,
+            timestamp,
+            previous_id: Some(id),
+            content_type: existing_entry.metadata.content_type.clone(),
+            metadata: existing_entry.metadata.properties.clone(),
+        };
+
+        let data_hash = self.hasher.hash_entry(&new_data, &entry_context)?;
 
         let metadata = EntryMetadata {
             timestamp,
@@ -179,6 +228,7 @@ impl Ledger {
         Ok(new_id)
     }
 
+    /// generate cryptographic proof for an entry
     pub fn generate_proof(&self, id: Uuid) -> Result<Proof> {
         let entry = self.get_entry(id)?;
 
@@ -196,6 +246,7 @@ impl Ledger {
         Ok(proof)
     }
 
+    /// verify proof against entry data
     pub fn verify_proof(&self, proof: &Proof, data: &[u8]) -> Result<bool> {
         if !self.entry_exists(proof.entry_id)? {
             return Ok(false);
@@ -203,6 +254,7 @@ impl Ledger {
         proof.verify(data)
     }
 
+    /// get ledger statistics
     pub fn stats(&self) -> Result<LedgerStats> {
         let storage_stats = self.storage.stats()?;
 
@@ -221,6 +273,7 @@ impl Ledger {
         })
     }
 
+    /// validate ledger integrity
     pub fn validate(&self) -> Result<()> {
         for id in self.entry_index.keys() {
             let key = format!("entry:{}", id);
@@ -237,6 +290,7 @@ impl Ledger {
         Ok(())
     }
 
+    /// add tag to existing entry
     pub fn add_entry_tag(&mut self, id: Uuid, tag: String) -> Result<()> {
         let mut entry = self.get_entry(id)?;
         if !entry.metadata.tags.contains(&tag) {
@@ -251,6 +305,7 @@ impl Ledger {
         Ok(())
     }
 
+    /// find entries with specific tag
     pub fn find_entries_by_tag(&self, tag: &str) -> Result<Vec<Uuid>> {
         let mut results = Vec::new();
         for (id, metadata) in &self.entry_index {

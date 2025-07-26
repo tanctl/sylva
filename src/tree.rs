@@ -1,26 +1,32 @@
 //! merkle tree implementation
 
 use crate::error::{Result, SylvaError};
-use crate::hash::{Hash, Hasher, Sha256Hasher};
+use crate::hash::{Blake3Hasher, Hash, HashOutput};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// merkle tree for cryptographic proofs
 pub struct MerkleTree {
-    root: Hash,
+    root: HashOutput,
     height: usize,
     #[serde(skip)]
     #[allow(dead_code)]
-    hasher: Sha256Hasher,
+    hasher: Blake3Hasher,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+/// proof path in merkle tree
 pub struct MerkleProof {
+    /// index of leaf in tree
     pub leaf_index: usize,
-    pub siblings: Vec<Hash>,
-    pub root: Hash,
+    /// sibling hashes for verification
+    pub siblings: Vec<HashOutput>,
+    /// root hash of tree
+    pub root: HashOutput,
 }
 
 impl MerkleTree {
+    /// create merkle tree from leaf data
     pub fn new(leaves: &[&[u8]]) -> Result<Self> {
         if leaves.is_empty() {
             return Err(SylvaError::merkle_tree_error(
@@ -28,8 +34,11 @@ impl MerkleTree {
             ));
         }
 
-        let hasher = Sha256Hasher;
-        let leaf_hashes: Vec<Hash> = leaves.iter().map(|leaf| hasher.hash(leaf)).collect();
+        let hasher = Blake3Hasher::new();
+        let leaf_hashes: Vec<HashOutput> = leaves
+            .iter()
+            .map(|leaf| hasher.hash_bytes(leaf).unwrap())
+            .collect();
 
         let (root, height) = Self::build_tree(&leaf_hashes, &hasher)?;
 
@@ -40,14 +49,17 @@ impl MerkleTree {
         })
     }
 
-    pub fn root(&self) -> &Hash {
+    /// get tree root hash
+    pub fn root(&self) -> &HashOutput {
         &self.root
     }
 
+    /// get tree height
     pub fn height(&self) -> usize {
         self.height
     }
 
+    /// generate proof for leaf at index
     pub fn generate_proof(&self, _leaf_index: usize, _leaves: &[&[u8]]) -> Result<MerkleProof> {
         // todo: implement actual proof generation
         Ok(MerkleProof {
@@ -57,15 +69,19 @@ impl MerkleTree {
         })
     }
 
+    /// verify merkle proof
     pub fn verify_proof(proof: &MerkleProof, leaf_data: &[u8]) -> Result<bool> {
-        let hasher = Sha256Hasher;
-        let leaf_hash = hasher.hash(leaf_data);
+        let hasher = Blake3Hasher::new();
+        let leaf_hash = hasher.hash_bytes(leaf_data)?;
 
         // todo: implement actual proof verification
         Ok(!proof.siblings.is_empty() || leaf_hash == proof.root)
     }
 
-    fn build_tree(leaf_hashes: &[Hash], hasher: &Sha256Hasher) -> Result<(Hash, usize)> {
+    fn build_tree(
+        leaf_hashes: &[HashOutput],
+        hasher: &Blake3Hasher,
+    ) -> Result<(HashOutput, usize)> {
         if leaf_hashes.len() == 1 {
             return Ok((leaf_hashes[0].clone(), 0));
         }
@@ -84,8 +100,7 @@ impl MerkleTree {
                     left
                 };
 
-                let combined = [left.as_bytes(), right.as_bytes()].concat();
-                let parent_hash = hasher.hash(&combined);
+                let parent_hash = hasher.hash_pair(left, right)?;
                 next_level.push(parent_hash);
             }
 

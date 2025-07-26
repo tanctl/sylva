@@ -6,6 +6,7 @@ use crate::workspace::Workspace;
 use std::path::PathBuf;
 use uuid::Uuid;
 
+/// handles cli commands and workspace operations
 pub struct CliProcessor {
     workspace: Option<Workspace>,
     #[allow(dead_code)]
@@ -14,6 +15,7 @@ pub struct CliProcessor {
 }
 
 impl CliProcessor {
+    /// create new cli processor with config
     pub fn new(config_path: Option<String>, verbose: bool) -> Result<Self> {
         let config = if let Some(path) = config_path {
             Config::load_from_file(&PathBuf::from(path))?
@@ -28,6 +30,7 @@ impl CliProcessor {
         })
     }
 
+    /// initialize new workspace at given path
     pub fn init_workspace(&mut self, path: String) -> Result<()> {
         let workspace_path = PathBuf::from(path);
 
@@ -60,6 +63,7 @@ impl CliProcessor {
         Ok(())
     }
 
+    /// load existing workspace from path
     pub fn load_workspace(&mut self, path: Option<String>) -> Result<()> {
         let workspace_path = if let Some(p) = path {
             PathBuf::from(p)
@@ -71,6 +75,7 @@ impl CliProcessor {
         Ok(())
     }
 
+    /// add new entry to ledger
     pub fn add_entry(&mut self, data: String, message: Option<String>) -> Result<()> {
         let verbose = self.verbose;
 
@@ -101,6 +106,7 @@ impl CliProcessor {
         Ok(())
     }
 
+    /// verify entry exists and proof is valid
     pub fn verify(&mut self, target: String) -> Result<()> {
         let workspace = self.get_workspace_mut()?;
         let ledger = workspace
@@ -109,7 +115,6 @@ impl CliProcessor {
             .ok_or_else(|| SylvaError::workspace_error("Ledger not initialized"))?;
 
         if let Ok(uuid) = Uuid::parse_str(&target) {
-            // Verify entry exists
             if ledger.entry_exists(uuid)? {
                 println!("✓ Entry {} exists and is valid", uuid);
 
@@ -132,6 +137,7 @@ impl CliProcessor {
         Ok(())
     }
 
+    /// list entries in the ledger
     pub fn list_entries(&mut self, detailed: bool, limit: Option<usize>) -> Result<()> {
         let workspace = self.get_workspace_mut()?;
         let ledger = workspace
@@ -178,6 +184,7 @@ impl CliProcessor {
         Ok(())
     }
 
+    /// show detailed info for an entry
     pub fn show_entry(&mut self, id_str: String) -> Result<()> {
         let workspace = self.get_workspace_mut()?;
         let ledger = workspace
@@ -224,6 +231,7 @@ impl CliProcessor {
         Ok(())
     }
 
+    /// generate proof for an entry
     pub fn generate_proof(&mut self, id_str: String, output: Option<String>) -> Result<()> {
         let workspace = self.get_workspace_mut()?;
         let ledger = workspace
@@ -247,6 +255,7 @@ impl CliProcessor {
         Ok(())
     }
 
+    /// show workspace status and info
     pub fn show_status(&mut self) -> Result<()> {
         if let Some(ref workspace) = self.workspace {
             let status = workspace.status()?;
@@ -263,7 +272,6 @@ impl CliProcessor {
             println!("Total Size: {} bytes", status.total_size);
             println!("Last Activity: {}", status.last_activity);
 
-            // Show validation issues if any
             let issues = workspace.validate()?;
             if !issues.is_empty() {
                 println!("\nValidation Issues:");
@@ -278,6 +286,7 @@ impl CliProcessor {
         Ok(())
     }
 
+    /// export data in specified format
     pub fn export_data(&mut self, format: String, output: Option<String>) -> Result<()> {
         println!("Export functionality not yet implemented");
         println!("Format: {}", format);
@@ -287,6 +296,7 @@ impl CliProcessor {
         Ok(())
     }
 
+    /// import data from file
     pub fn import_data(&mut self, input: String, format: String) -> Result<()> {
         println!("Import functionality not yet implemented");
         println!("Input: {}", input);
