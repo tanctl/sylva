@@ -54,6 +54,9 @@ pub enum SylvaError {
     #[error("Resource already exists: {resource}")]
     AlreadyExists { resource: String },
 
+    #[error("Resource not found: {resource}")]
+    NotFound { resource: String },
+
     #[error("Operation timed out after {duration_ms}ms")]
     Timeout { duration_ms: u64 },
 
@@ -131,6 +134,13 @@ impl SylvaError {
     /// create already exists error
     pub fn already_exists<S: Into<String>>(resource: S) -> Self {
         Self::AlreadyExists {
+            resource: resource.into(),
+        }
+    }
+
+    /// create not found error
+    pub fn not_found<S: Into<String>>(resource: S) -> Self {
+        Self::NotFound {
             resource: resource.into(),
         }
     }

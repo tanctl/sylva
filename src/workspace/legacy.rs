@@ -1,6 +1,6 @@
 //! workspace management for Sylva projects
 
-use crate::config::Config;
+use crate::config::LegacyConfig;
 use crate::error::{Result, SylvaError};
 use crate::ledger::Ledger;
 use serde::{Deserialize, Serialize};
@@ -22,7 +22,7 @@ pub struct Workspace {
     /// workspace metadata
     pub metadata: WorkspaceMetadata,
     /// workspace configuration
-    pub config: Config,
+    pub config: LegacyConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,7 +61,7 @@ impl Workspace {
                 tags: Vec::new(),
                 properties: std::collections::HashMap::new(),
             },
-            config: Config::default(),
+            config: LegacyConfig::default(),
         };
 
         Ok(workspace)
@@ -102,7 +102,7 @@ impl Workspace {
 
         let config_path = path.join("config").join("sylva.toml");
         if config_path.exists() {
-            workspace.config = Config::load_from_file(&config_path)?;
+            workspace.config = LegacyConfig::load_from_file(&config_path)?;
         }
 
         let data_dir = path.join("data");

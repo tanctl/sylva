@@ -3,6 +3,7 @@
 use clap::{Parser, Subcommand};
 use std::process;
 use sylva::error::Result;
+use sylva::workspace::{WorkspaceInitOptions, WorkspaceManager};
 
 #[derive(Parser)]
 #[command(
@@ -27,6 +28,16 @@ enum Commands {
     Init {
         #[arg(default_value = ".")]
         path: String,
+        #[arg(short, long)]
+        name: Option<String>,
+        #[arg(short, long)]
+        description: Option<String>,
+        #[arg(long)]
+        with_examples: bool,
+    },
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
     },
     Add {
         data: String,
@@ -65,6 +76,18 @@ enum Commands {
     Version,
 }
 
+#[derive(Subcommand)]
+enum ConfigAction {
+    Get {
+        key: String,
+    },
+    Set {
+        key: String,
+        value: String,
+    },
+    List,
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -76,9 +99,44 @@ fn main() {
 
 fn run(cli: Cli) -> Result<()> {
     match cli.command {
-        Commands::Init { path } => {
-            println!("Initializing Sylva workspace at: {}", path);
-            // todo: implement workspace initialization
+        Commands::Init { path, name, description, with_examples } => {
+            let options = WorkspaceInitOptions {
+                name,
+                description,
+                config: None,
+                with_examples,
+            };
+
+            let mut manager = WorkspaceManager::new();
+            manager.init(&path, options)?;
+
+            println!("✅ Initialized Sylva workspace at: {}", path);
+            if with_examples {
+                println!("📄 Created example files (README.md, .gitignore)");
+            }
+            println!("🚀 Run 'sylva status' to see workspace information");
+            Ok(())
+        }
+        Commands::Config { action } => {
+            let mut manager = WorkspaceManager::new();
+            
+            match action {
+                ConfigAction::Get { key } => {
+                    let value = manager.get_config(&key)?;
+                    println!("{}", value);
+                }
+                ConfigAction::Set { key, value } => {
+                    manager.set_config(&key, &value)?;
+                    println!("✅ Set {} = {}", key, value);
+                }
+                ConfigAction::List => {
+                    let config = manager.list_config()?;
+                    println!("Configuration:");
+                    for (key, value) in config {
+                        println!("  {} = {}", key, value);
+                    }
+                }
+            }
             Ok(())
         }
         Commands::Add { data, message } => {
@@ -129,8 +187,45 @@ fn run(cli: Cli) -> Result<()> {
             Ok(())
         }
         Commands::Status => {
-            println!("Workspace status:");
-            // todo: implement status display
+            let mut manager = WorkspaceManager::new();
+            let info = manager.status()?;
+
+            println!("Workspace Status");
+            println!("================");
+            println!("Name: {}", info.name);
+            println!("Path: {}", info.root.display());
+            println!("ID: {}", info.id);
+            
+            if let Some(desc) = &info.description {
+                println!("Description: {}", desc);
+            }
+            
+            if !info.tags.is_empty() {
+                println!("Tags: {}", info.tags.join(", "));
+            }
+
+            println!();
+            println!("Content:");
+            println!("  Ledgers: {}", info.ledger_count);
+            println!("  Proofs: {}", info.proof_count);
+            println!("  Snapshots: {}", info.snapshot_count);
+            println!("  Config: {}", if info.has_config { "✅" } else { "❌" });
+
+            let created = std::time::UNIX_EPOCH + std::time::Duration::from_secs(info.created_at);
+            let modified = std::time::UNIX_EPOCH + std::time::Duration::from_secs(info.modified_at);
+            println!();
+            println!("Timestamps:");
+            println!("  Created: {:?}", created);
+            println!("  Modified: {:?}", modified);
+
+            if !info.issues.is_empty() {
+                println!();
+                println!("⚠️  Issues:");
+                for issue in &info.issues {
+                    println!("  - {}", issue);
+                }
+            }
+
             Ok(())
         }
         Commands::Version => {

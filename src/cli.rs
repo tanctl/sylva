@@ -1,8 +1,8 @@
 //! cli implementation
 
-use crate::config::Config;
+use crate::config::{ConfigManager, LegacyConfig};
 use crate::error::{Result, SylvaError};
-use crate::workspace::Workspace;
+use crate::workspace::{LegacyWorkspace as Workspace};
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -10,7 +10,9 @@ use uuid::Uuid;
 pub struct CliProcessor {
     workspace: Option<Workspace>,
     #[allow(dead_code)]
-    config: Config,
+    config: LegacyConfig,
+    #[allow(dead_code)]
+    config_manager: ConfigManager,
     verbose: bool,
 }
 
@@ -18,14 +20,17 @@ impl CliProcessor {
     /// create new cli processor with config
     pub fn new(config_path: Option<String>, verbose: bool) -> Result<Self> {
         let config = if let Some(path) = config_path {
-            Config::load_from_file(&PathBuf::from(path))?
+            LegacyConfig::load_from_file(&PathBuf::from(path))?
         } else {
-            Config::load_from_env().unwrap_or_default()
+            LegacyConfig::load_from_env().unwrap_or_default()
         };
+
+        let config_manager = ConfigManager::new()?;
 
         Ok(Self {
             workspace: None,
             config,
+            config_manager,
             verbose,
         })
     }

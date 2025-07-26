@@ -18,7 +18,7 @@ pub use error::{Result, SylvaError};
 /// commonly used types and traits
 pub mod prelude {
     pub use crate::{
-        config::Config,
+        config::{Config, ConfigManager, ConfigSource, LegacyConfig},
         error::{Result, SylvaError},
         hash::{Blake3Hasher, Hash, HashOutput},
         ledger::Ledger,
