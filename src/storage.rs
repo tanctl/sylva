@@ -1,5 +1,7 @@
 //! storage backends
 
+pub mod ledger;
+
 use crate::error::{Result, SylvaError};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde::{Deserialize, Serialize};

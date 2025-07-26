@@ -23,7 +23,7 @@ pub mod prelude {
         hash::{Blake3Hasher, Hash, HashOutput},
         ledger::Ledger,
         proof::Proof,
-        storage::Storage,
+        storage::{ledger::LedgerSerializer, Storage},
         tree::MerkleTree,
         workspace::Workspace,
     };

@@ -7,7 +7,7 @@
 //!
 //! let hasher = Blake3Hasher::new();
 //! let hash = hasher.hash_bytes(b"test data").unwrap();
-//! println!("Blake3 hash: {}", hash.to_hex());
+//! println!("blake3 hash: {}", hash.to_hex());
 //! ```
 
 use super::{EntryHashContext, Hash, HashOutput};

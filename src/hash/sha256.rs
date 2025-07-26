@@ -7,7 +7,7 @@
 //!
 //! let hasher = Sha256Hasher::new();
 //! let hash = hasher.hash_bytes(b"test data").unwrap();
-//! println!("SHA-256 hash: {}", hash.to_hex());
+//! println!("sha-256 hash: {}", hash.to_hex());
 //! ```
 
 use super::{EntryHashContext, Hash, HashOutput};

@@ -189,9 +189,11 @@ impl Ledger {
 
         self.current_version += 1;
 
+        let new_entry_version = existing_entry.version + 1;
+
         let entry_context = EntryHashContext {
             entry_id: new_id,
-            version: self.current_version,
+            version: new_entry_version,
             timestamp,
             previous_id: Some(id),
             content_type: existing_entry.metadata.content_type.clone(),
@@ -212,7 +214,7 @@ impl Ledger {
 
         let entry = LedgerEntry {
             id: new_id,
-            version: self.current_version,
+            version: new_entry_version,
             data: new_data,
             metadata: metadata.clone(),
             data_hash,

@@ -7,7 +7,7 @@
 //!
 //! let hasher = KeccakHasher::new();
 //! let hash = hasher.hash_bytes(b"test data").unwrap();
-//! println!("Keccak-256 hash: {}", hash.to_hex());
+//! println!("keccak-256 hash: {}", hash.to_hex());
 //! ```
 
 use super::{EntryHashContext, Hash, HashOutput};

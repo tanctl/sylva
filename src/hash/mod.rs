@@ -9,12 +9,12 @@
 //! let hasher = Blake3Hasher::new();
 //! let data = b"ledger entry data";
 //! let hash_output = hasher.hash_bytes(data).unwrap();
-//! println!("Hash: {}", hash_output.to_hex());
+//! println!("hash: {}", hash_output.to_hex());
 //!
 //! let registry = HashRegistry::default();
 //! let hasher = registry.get_hasher("sha256").expect("SHA-256 should be available");
 //! let hash_output = hasher.hash_bytes(data).unwrap();
-//! println!("SHA-256 Hash: {}", hash_output.to_hex());
+//! println!("sha-256 hash: {}", hash_output.to_hex());
 //! ```
 
 use crate::error::{Result, SylvaError};

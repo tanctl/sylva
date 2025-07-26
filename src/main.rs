@@ -78,13 +78,8 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum ConfigAction {
-    Get {
-        key: String,
-    },
-    Set {
-        key: String,
-        value: String,
-    },
+    Get { key: String },
+    Set { key: String, value: String },
     List,
 }
 
@@ -99,7 +94,12 @@ fn main() {
 
 fn run(cli: Cli) -> Result<()> {
     match cli.command {
-        Commands::Init { path, name, description, with_examples } => {
+        Commands::Init {
+            path,
+            name,
+            description,
+            with_examples,
+        } => {
             let options = WorkspaceInitOptions {
                 name,
                 description,
@@ -119,7 +119,7 @@ fn run(cli: Cli) -> Result<()> {
         }
         Commands::Config { action } => {
             let mut manager = WorkspaceManager::new();
-            
+
             match action {
                 ConfigAction::Get { key } => {
                     let value = manager.get_config(&key)?;
@@ -195,11 +195,11 @@ fn run(cli: Cli) -> Result<()> {
             println!("Name: {}", info.name);
             println!("Path: {}", info.root.display());
             println!("ID: {}", info.id);
-            
+
             if let Some(desc) = &info.description {
                 println!("Description: {}", desc);
             }
-            
+
             if !info.tags.is_empty() {
                 println!("Tags: {}", info.tags.join(", "));
             }

@@ -2,7 +2,7 @@
 
 use crate::config::{ConfigManager, LegacyConfig};
 use crate::error::{Result, SylvaError};
-use crate::workspace::{LegacyWorkspace as Workspace};
+use crate::workspace::LegacyWorkspace as Workspace;
 use std::path::PathBuf;
 use uuid::Uuid;
 

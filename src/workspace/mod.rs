@@ -34,7 +34,7 @@ pub struct Workspace {
 }
 
 /// workspace initialization options
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct WorkspaceInitOptions {
     /// workspace name (defaults to directory name)
     pub name: Option<String>,
@@ -44,17 +44,6 @@ pub struct WorkspaceInitOptions {
     pub config: Option<Config>,
     /// create example files
     pub with_examples: bool,
-}
-
-impl Default for WorkspaceInitOptions {
-    fn default() -> Self {
-        Self {
-            name: None,
-            description: None,
-            config: None,
-            with_examples: false,
-        }
-    }
 }
 
 /// workspace directory structure
@@ -80,7 +69,7 @@ impl WorkspaceStructure {
     pub fn new<P: AsRef<Path>>(root: P) -> Self {
         let root = root.as_ref().to_path_buf();
         let sylva_dir = root.join(".sylva");
-        
+
         Self {
             root: root.clone(),
             sylva_dir: sylva_dir.clone(),
@@ -207,7 +196,7 @@ impl Workspace {
     /// find workspace root by looking for .sylva directory
     pub fn find_workspace_root<P: AsRef<Path>>(start_path: P) -> Result<PathBuf> {
         let mut current = start_path.as_ref().to_path_buf();
-        
+
         // make path absolute
         if current.is_relative() {
             current = std::env::current_dir()?.join(current);
@@ -705,7 +694,10 @@ mod tests {
 
         let result = Workspace::find_workspace_root(&non_workspace_path);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("No workspace found"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No workspace found"));
     }
 
     #[test]
@@ -780,23 +772,25 @@ mod tests {
     #[test]
     fn test_workspace_manager_require_workspace() {
         use tempfile::TempDir;
-        
+
         let temp_dir = TempDir::new().unwrap();
         let non_workspace_dir = temp_dir.path().join("not_a_workspace");
         std::fs::create_dir_all(&non_workspace_dir).unwrap();
-        
+
         // change to non-workspace directory
         let original_dir = std::env::current_dir().unwrap();
         std::env::set_current_dir(&non_workspace_dir).unwrap();
-        
+
         let mut manager = WorkspaceManager::new();
 
         // should fail when not in workspace
         let result = manager.require_workspace();
         assert!(result.is_err());
         let error_msg = result.unwrap_err().to_string();
-        assert!(error_msg.contains("No workspace found") || error_msg.contains("Not in a workspace"));
-        
+        assert!(
+            error_msg.contains("No workspace found") || error_msg.contains("Not in a workspace")
+        );
+
         // restore original directory
         std::env::set_current_dir(original_dir).unwrap();
     }
@@ -817,11 +811,15 @@ mod tests {
         assert!(!workspace.tags.contains(&"important".to_string()));
 
         // test description
-        workspace.set_description("New description".to_string()).unwrap();
+        workspace
+            .set_description("New description".to_string())
+            .unwrap();
         assert_eq!(workspace.description, Some("New description".to_string()));
 
         // test properties
-        workspace.set_property("key1".to_string(), "value1".to_string()).unwrap();
+        workspace
+            .set_property("key1".to_string(), "value1".to_string())
+            .unwrap();
         assert_eq!(workspace.get_property("key1"), Some(&"value1".to_string()));
 
         workspace.remove_property("key1").unwrap();
